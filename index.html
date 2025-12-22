@@ -1,0 +1,353 @@
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silver Market Dashboard V2 - Real-Time Intelligence</title>
+    <style>
+        :root {
+            --color-cream-50: rgba(252, 252, 249, 1);
+            --color-cream-100: rgba(255, 255, 253, 1);
+            --color-gray-200: rgba(245, 245, 245, 1);
+            --color-slate-500: rgba(98, 108, 113, 1);
+            --color-slate-900: rgba(19, 52, 59, 1);
+            --color-teal-500: rgba(33, 128, 141, 1);
+            --color-teal-600: rgba(29, 116, 128, 1);
+            --color-red-500: rgba(192, 21, 47, 1);
+            --color-red-400: rgba(255, 84, 89, 1);
+            --color-orange-500: rgba(168, 75, 47, 1);
+            --color-green-500: rgba(16, 185, 129, 1);
+
+            --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --space-8: 8px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --radius-base: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * { box-sizing: border-box; }
+        html { font-size: 14px; font-family: var(--font-family-base); line-height: 1.5; color: var(--color-slate-900); background-color: var(--color-cream-50); }
+        body { margin: 0; padding: 0; background: linear-gradient(135deg, var(--color-cream-50) 0%, var(--color-gray-200) 100%); }
+        h1, h2, h3 { margin: 0; font-weight: 550; }
+        h1 { font-size: 30px; }
+        h2 { font-size: 20px; }
+        h3 { font-size: 16px; }
+        p { margin: 0 0 var(--space-12) 0; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: var(--space-24); }
+        .header { text-align: center; margin-bottom: var(--space-24); border-bottom: 2px solid rgba(33, 128, 141, 0.2); padding-bottom: var(--space-20); }
+        .header h1 { color: var(--color-teal-500); margin-bottom: var(--space-8); }
+        .header p { color: var(--color-slate-500); font-size: 16px; }
+
+        .tabs { display: flex; gap: var(--space-8); margin-bottom: var(--space-20); border-bottom: 2px solid var(--color-gray-200); flex-wrap: wrap; }
+        .tab-btn { padding: var(--space-12) var(--space-20); border: none; background: transparent; cursor: pointer; font-weight: 500; color: var(--color-slate-500); border-bottom: 3px solid transparent; transition: all 150ms; }
+        .tab-btn.active { color: var(--color-teal-500); border-bottom-color: var(--color-teal-500); }
+        .tab-btn:hover { color: var(--color-teal-600); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 300ms ease-in; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-20); margin-bottom: var(--space-24); }
+        .card { background: var(--color-cream-100); border: 1px solid rgba(94, 82, 64, 0.2); border-radius: var(--radius-lg); padding: var(--space-20); box-shadow: var(--shadow-sm); transition: all 250ms; }
+        .card:hover { box-shadow: var(--shadow-md); border-color: rgba(94, 82, 64, 0.4); }
+
+        .metric-label { font-size: 12px; color: var(--color-slate-500); text-transform: uppercase; font-weight: 550; margin-bottom: var(--space-8); }
+        .metric-value { font-size: 28px; font-weight: 600; color: var(--color-slate-900); margin-bottom: var(--space-8); }
+        .metric-change { font-size: 14px; font-weight: 500; }
+        .metric-change.up { color: var(--color-green-500); }
+        .metric-change.down { color: var(--color-red-500); }
+
+        .status-badge { display: inline-block; padding: var(--space-8) var(--space-12); border-radius: 9999px; font-size: 12px; font-weight: 550; text-transform: uppercase; }
+        .status-tight { background: rgba(255, 84, 89, 0.15); color: var(--color-red-500); }
+        .status-moderate { background: rgba(230, 129, 97, 0.15); color: var(--color-orange-500); }
+        .status-normal { background: rgba(33, 128, 141, 0.15); color: var(--color-teal-500); }
+
+        .inventory-location { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-20); }
+        .location-card { background: var(--color-cream-100); border: 1px solid rgba(94, 82, 64, 0.2); border-radius: var(--radius-base); padding: var(--space-16); }
+        .location-name { font-weight: 600; margin-bottom: var(--space-8); color: var(--color-slate-900); }
+        .location-data { font-size: 13px; color: var(--color-slate-500); line-height: 1.8; }
+
+        .price-row { display: flex; justify-content: space-between; padding: var(--space-12) 0; border-bottom: 1px solid var(--color-gray-200); }
+        .price-row:last-child { border-bottom: none; }
+        .price-label { color: var(--color-slate-500); font-size: 13px; }
+        .price-val { font-weight: 600; color: var(--color-slate-900); }
+        .price-spread { font-size: 12px; color: var(--color-slate-500); }
+
+        .stock-comparison { width: 100%; border-collapse: collapse; margin-bottom: var(--space-20); }
+        .stock-comparison th { text-align: left; padding: var(--space-12); background: rgba(33, 128, 141, 0.1); font-weight: 600; color: var(--color-slate-900); border-bottom: 2px solid var(--color-teal-500); font-size: 13px; }
+        .stock-comparison td { padding: var(--space-12); border-bottom: 1px solid var(--color-gray-200); font-size: 13px; }
+        .stock-comparison tr:hover { background: rgba(33, 128, 141, 0.05); }
+        .stock-ticker { font-weight: 600; color: var(--color-teal-500); }
+        .stock-up { color: var(--color-green-500); font-weight: 600; }
+        .stock-down { color: var(--color-red-500); font-weight: 600; }
+
+        .news-item { background: var(--color-cream-100); border: 1px solid rgba(94, 82, 64, 0.2); border-radius: var(--radius-base); padding: var(--space-16); margin-bottom: var(--space-16); cursor: pointer; transition: all 250ms; }
+        .news-item:hover { box-shadow: var(--shadow-md); border-color: var(--color-teal-500); }
+        .news-date { font-size: 12px; color: var(--color-slate-500); text-transform: uppercase; margin-bottom: var(--space-8); font-weight: 550; }
+        .news-title { font-weight: 600; color: var(--color-slate-900); margin-bottom: var(--space-8); font-size: 15px; }
+        .news-summary { font-size: 13px; color: var(--color-slate-500); line-height: 1.6; }
+        .news-expanded { background: rgba(33, 128, 141, 0.1); padding: var(--space-16); border-radius: var(--radius-base); margin-top: var(--space-12); }
+
+        .btn { padding: var(--space-12) var(--space-20); border: none; background: var(--color-teal-500); color: white; border-radius: var(--radius-base); cursor: pointer; font-weight: 500; transition: all 150ms; }
+        .btn:hover { background: var(--color-teal-600); }
+        .btn-secondary { background: transparent; border: 1px solid var(--color-teal-500); color: var(--color-teal-500); }
+        .btn-secondary:hover { background: rgba(33, 128, 141, 0.1); }
+
+        .disclaimer { font-size: 11px; color: var(--color-slate-500); text-align: center; padding: var(--space-16); margin-top: var(--space-32); border-top: 1px solid var(--color-gray-200); }
+        .alert { background: rgba(33, 128, 141, 0.1); border-left: 4px solid var(--color-teal-500); padding: var(--space-16); border-radius: var(--radius-base); margin-bottom: var(--space-20); }
+        .alert h3 { color: var(--color-teal-500); margin-bottom: var(--space-8); }
+
+        @media (max-width: 768px) {
+            .container { padding: var(--space-16); }
+            .grid { grid-template-columns: 1fr; }
+            .tabs { gap: var(--space-4); }
+            .tab-btn { padding: var(--space-8) var(--space-12); font-size: 12px; }
+            .stock-comparison { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Silver Market Dashboard V2</h1>
+            <p>Real-Time Global Inventory, Pricing & Mining Intelligence | December 22, 2025</p>
+        </div>
+
+        <div class="alert">
+            <h3>⚠️ Market Status: CRITICAL SQUEEZE CONDITIONS</h3>
+            <p>COMEX registered inventory at historic lows. Global supply deficit entering 5th consecutive year. Short squeeze mechanics may activate on any supply disruption.</p>
+        </div>
+
+        <div class="tabs" id="tabNav">
+            <button class="tab-btn active" onclick="switchTab('inventory')">📦 Global Inventory</button>
+            <button class="tab-btn" onclick="switchTab('pricing')">💰 Price Modeling</button>
+            <button class="tab-btn" onclick="switchTab('stocks')">📈 Mining Stocks</button>
+            <button class="tab-btn" onclick="switchTab('etfs')">💎 Silver ETFs</button>
+            <button class="tab-btn" onclick="switchTab('news')">📰 News & Analysis</button>
+        </div>
+
+        <div id="inventory" class="tab-content active">
+            <h2>Global Silver Inventory (December 22, 2025)</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="metric-label">COMEX Total</div>
+                    <div class="metric-value">453.8M oz</div>
+                    <div class="metric-change down">↓ 28% from 2020</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">London LBMA</div>
+                    <div class="metric-value">26.3M oz</div>
+                    <div class="metric-change up">↑ 2.5% MoM</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Shanghai Futures</div>
+                    <div class="metric-value">168.4M oz</div>
+                    <div class="metric-change down">↓ 45% from 2020</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Global Visible</div>
+                    <div class="metric-value">~648M oz</div>
+                    <div class="metric-change down">↓ 35% from 2020</div>
+                </div>
+            </div>
+            <div class="card">
+                <p><strong>Status:</strong> Critical squeeze conditions. Cumulative deficit >600M oz since 2021. Fifth consecutive year of supply shortages.</p>
+            </div>
+        </div>
+
+        <div id="pricing" class="tab-content">
+            <h2>Silver Price Modeling (December 22, 2025)</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="metric-label">Spot Price (LBMA)</div>
+                    <div class="metric-value">$68.73</div>
+                    <div class="metric-change up">+2.44% today</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">COMEX Dec Futures</div>
+                    <div class="metric-value">$68.85</div>
+                    <div class="metric-change up">+$0.12 vs spot</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">COMEX March 2026</div>
+                    <div class="metric-value">$69.50</div>
+                    <div class="metric-change up">+$0.77 vs spot</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Gold/Silver Ratio</div>
+                    <div class="metric-value">63.8:1</div>
+                    <div class="metric-change up">↑ Silver outperforming</div>
+                </div>
+            </div>
+            <div class="card">
+                <p><strong>Analysis:</strong> YTD gain +127.5%. Backwardation signal present (Dec futures only $0.12 above spot vs normal $1.00). Early-stage squeeze indicator.</p>
+            </div>
+        </div>
+
+        <div id="stocks" class="tab-content">
+            <h2>Silver Mining Stocks</h2>
+            <table class="stock-comparison">
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Ticker</th>
+                        <th>Price</th>
+                        <th>1M %</th>
+                        <th>YTD %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Wheaton Precious Metals</td>
+                        <td class="stock-ticker">WPM</td>
+                        <td>$42.50</td>
+                        <td class="stock-up">+11.5%</td>
+                        <td class="stock-up">+22.4%</td>
+                    </tr>
+                    <tr>
+                        <td>Pan American Silver</td>
+                        <td class="stock-ticker">PAAS</td>
+                        <td>$48.20</td>
+                        <td class="stock-up">+28.3%</td>
+                        <td class="stock-up">+161.9%</td>
+                    </tr>
+                    <tr>
+                        <td>Silvercorp Metals</td>
+                        <td class="stock-ticker">SVM</td>
+                        <td>$7.85</td>
+                        <td class="stock-up">+22.8%</td>
+                        <td class="stock-up">+55.3%</td>
+                    </tr>
+                    <tr>
+                        <td>Hecla Mining</td>
+                        <td class="stock-ticker">HL</td>
+                        <td>$9.32</td>
+                        <td class="stock-up">+26.4%</td>
+                        <td class="stock-up">+58.7%</td>
+                    </tr>
+                    <tr>
+                        <td>First Majestic Silver</td>
+                        <td class="stock-ticker">AG</td>
+                        <td>$14.28</td>
+                        <td class="stock-up">+35.8%</td>
+                        <td class="stock-up">+78.2%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="etfs" class="tab-content">
+            <h2>Silver ETFs - Performance Comparison</h2>
+            <table class="stock-comparison">
+                <thead>
+                    <tr>
+                        <th>ETF</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>YTD %</th>
+                        <th>Expense Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="stock-ticker">SLV</td>
+                        <td>iShares Silver Trust</td>
+                        <td>Physical</td>
+                        <td class="stock-up">+113.0%</td>
+                        <td>0.50%</td>
+                    </tr>
+                    <tr>
+                        <td class="stock-ticker">SIVR</td>
+                        <td>ETFS Silver Trust</td>
+                        <td>Physical</td>
+                        <td class="stock-up">+113.5%</td>
+                        <td>0.30%</td>
+                    </tr>
+                    <tr>
+                        <td class="stock-ticker">PSLV</td>
+                        <td>Sprott Physical Silver</td>
+                        <td>Physical</td>
+                        <td class="stock-up">+129.4%</td>
+                        <td>0.57%</td>
+                    </tr>
+                    <tr>
+                        <td class="stock-ticker">SIL</td>
+                        <td>Global X Silver Miners</td>
+                        <td>Miners</td>
+                        <td class="stock-up">+142.0%</td>
+                        <td>0.65%</td>
+                    </tr>
+                    <tr>
+                        <td class="stock-ticker">SLVR</td>
+                        <td>Sprott Miners+Physical</td>
+                        <td>Hybrid</td>
+                        <td class="stock-up">+171.8%</td>
+                        <td>0.65%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="news" class="tab-content">
+            <h2>Silver Market News & Analysis</h2>
+            <div class="news-item" onclick="toggleNews(this)">
+                <div class="news-date">December 22, 2025</div>
+                <div class="news-title">🚨 COMEX Squeeze Mechanics: Registered Inventory Critical</div>
+                <div class="news-summary">Registered inventory down 60%+ in past month. 7,330 contracts (36.65M oz) seeking delivery but only 12-15M oz available...</div>
+                <div class="news-expanded" style="display: none;">
+                    <p>COMEX registered inventory has plunged to critical levels. With 7,330 contracts seeking delivery simultaneously, physical demand totals 36.65M oz—more than twice the entire registered inventory. This mathematical impossibility forces either price discovery rally or CME rule changes.</p>
+                </div>
+            </div>
+            <div class="news-item" onclick="toggleNews(this)">
+                <div class="news-date">December 19, 2025</div>
+                <div class="news-title">💰 Silver Hits New Record: $68.73/oz YTD +127.5%</div>
+                <div class="news-summary">Silver trading near all-time highs with strong industrial demand. Solar (232M oz), EVs (78M oz), data centers (41M oz)...</div>
+                <div class="news-expanded" style="display: none;">
+                    <p>Silver has surged 127.5% year-to-date, reflecting fundamental repricing due to persistent supply deficits and industrial demand acceleration. Supply remains 117M oz short for 2025—the fifth consecutive year of deficits.</p>
+                </div>
+            </div>
+            <div class="news-item" onclick="toggleNews(this)">
+                <div class="news-date">December 12, 2025</div>
+                <div class="news-title">🏢 Pan American Silver: Q3 Record FCF $251.7M</div>
+                <div class="news-summary">PAAS completes MAG Silver acquisition. 2025 silver guidance raised to 22.0–22.5M oz. Dividend increased to $0.14/share...</div>
+                <div class="news-expanded" style="display: none;">
+                    <p>Pan American Silver finalized its $2.1B acquisition of MAG Silver, creating one of North America's largest pure-play silver producers. Juanicipio mine integration shows record FCF and production synergies.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        <strong>⚠️ EDUCATIONAL DISCLAIMER:</strong> This dashboard is for informational purposes only. Not financial advice. Silver markets are volatile. Always consult qualified professionals before investing.
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            const btns = document.querySelectorAll('.tab-btn');
+            tabs.forEach(t => t.classList.remove('active'));
+            btns.forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function toggleNews(elem) {
+            const expanded = elem.querySelector('.news-expanded');
+            expanded.style.display = expanded.style.display === 'none' ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Silver Market Dashboard V2 loaded');
+        });
+    </script>
+</body>
+</html>
+EOF
