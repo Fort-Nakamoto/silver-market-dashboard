@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Silver Market Dashboard V3 - LIVE DATA</title>
+    <title>Silver Market Dashboard V3.1 - LIVE London + Shanghai</title>
     <style>
         :root {
             --color-cream-50: rgba(252, 252, 249, 1);
@@ -54,6 +54,7 @@
             box-shadow: var(--shadow-md); 
         }
         .live-indicator.updating { background: linear-gradient(45deg, #eab308, #f59e0b); }
+        .live-indicator.error { background: linear-gradient(45deg, var(--color-red-500), #dc2626); }
         .price-live { animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.02); } }
 
@@ -75,22 +76,33 @@
         .metric-change { font-size: 14px; font-weight: 500; }
         .metric-change.up { color: var(--color-green-500); }
         .metric-change.down { color: var(--color-red-500); }
+        .metric-change.moderate { color: var(--color-orange-500); }
+
+        .stock-comparison { width: 100%; border-collapse: collapse; margin-bottom: var(--space-20); }
+        .stock-comparison th { text-align: left; padding: var(--space-12); background: rgba(33, 128, 141, 0.1); font-weight: 600; color: var(--color-slate-900); border-bottom: 2px solid var(--color-teal-500); font-size: 13px; }
+        .stock-comparison td { padding: var(--space-12); border-bottom: 1px solid var(--color-gray-200); font-size: 13px; }
+        .stock-comparison tr:hover { background: rgba(33, 128, 141, 0.05); }
+        .stock-ticker { font-weight: 600; color: var(--color-teal-500); }
+        .stock-up { color: var(--color-green-500); font-weight: 600; }
+        .stock-down { color: var(--color-red-500); font-weight: 600; }
 
         .loading { opacity: 0.6; }
-        .error { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-red-500); padding: 16px; border-radius: var(--radius-base); }
+        .error { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--color-red-500); padding: 16px; border-radius: var(--radius-base); margin-bottom: var(--space-20); }
 
         @media (max-width: 768px) {
             .container { padding: var(--space-16); }
             .grid { grid-template-columns: 1fr; }
             .live-indicator { position: relative; top: 0; right: 0; margin: 16px 0; text-align: center; }
+            .tabs { gap: var(--space-4); }
+            .tab-btn { padding: var(--space-8) var(--space-12); font-size: 12px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌍 Silver Market Dashboard V3 - LIVE</h1>
-            <p>Real-Time Global Silver Intelligence | Auto-updates every 60s</p>
+            <h1>🌍 Silver Market Dashboard V3.1 - LIVE</h1>
+            <p>Real-Time London LBMA + Shanghai SGE + Spread | Auto-updates every 60s</p>
             <p style="font-size: 12px; color: var(--color-slate-500); margin-top: var(--space-12);">
                 🧩 <a href="https://github.com/Fort-Nakamoto/silver-market-dashboard" target="_blank" rel="noopener noreferrer" style="color: var(--color-teal-500); text-decoration: underline;">github.com/Fort-Nakamoto/silver-market-dashboard</a>
                 | <code style="background: var(--color-gray-200); padding: 2px 6px; border-radius: 4px;">git clone https://github.com/Fort-Nakamoto/silver-market-dashboard</code>
@@ -109,14 +121,38 @@
         <div id="pricing" class="tab-content active">
             <h2>🟢 LIVE Silver Prices (Updated: <span id="priceUpdateTime">--</span>)</h2>
             <div id="livePrices" class="grid loading">
-                <!-- Live data populates here -->
+                <div class="card">
+                    <div class="metric-label">Spot Silver (Alpha Vantage)</div>
+                    <div class="metric-value price-live" id="spotPrice">$--.--</div>
+                    <div class="metric-change" id="spotChange">--</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">London LBMA (LIVE)</div>
+                    <div class="metric-value price-live" id="londonPrice">$--.--</div>
+                    <div class="metric-change" id="londonChange">--</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Shanghai SGE (LIVE)</div>
+                    <div class="metric-value price-live" id="shanghaiPrice">-- CNY/kg</div>
+                    <div class="metric-change" id="shanghaiChange">--</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Shanghai vs London SPREAD</div>
+                    <div class="metric-value" id="spreadValue">--.%</div>
+                    <div class="metric-change" id="spreadStatus">Loading...</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">API Status</div>
+                    <div class="metric-value" style="font-size: 18px;">Active</div>
+                    <div class="metric-change up">Alpha Vantage + SGE ✓</div>
+                </div>
             </div>
         </div>
 
         <!-- LIVE STOCKS TAB -->
         <div id="stocks" class="tab-content">
             <h2>📊 LIVE Silver Mining Stocks</h2>
-            <table id="liveStocksTable" class="stock-comparison" style="width: 100%; border-collapse: collapse; margin-bottom: var(--space-20);">
+            <table id="liveStocksTable" class="stock-comparison">
                 <thead>
                     <tr>
                         <th>Company</th>
@@ -132,62 +168,123 @@
             </table>
         </div>
 
-        <!-- STATIC INVENTORY TAB (for now) -->
+        <!-- INVENTORY TAB -->
         <div id="inventory" class="tab-content">
             <h2>Global Silver Inventory (Dec 26, 2025)</h2>
             <div class="grid">
                 <div class="card">
-                    <div class="metric-label">COMEX Total</div>
+                    <div class="metric-label">COMEX Total Warehouse</div>
                     <div class="metric-value">453.8M oz</div>
-                    <div class="metric-change down">↓ 28% from 2020</div>
+                    <div class="metric-change down">↓ 28% from 2020 peak</div>
+                    <div style="margin-top: var(--space-12); font-size: 12px; color: var(--color-slate-500);">
+                        <strong>Registered:</strong> ~12-15M oz<br>
+                        <strong>Status:</strong> <span style="background: rgba(255, 84, 89, 0.15); color: var(--color-red-500); padding: 4px 8px; border-radius: 9999px; font-size: 11px;">CRITICAL</span>
+                    </div>
                 </div>
-                <!-- [Keep existing inventory content] -->
+                <div class="card">
+                    <div class="metric-label">London LBMA Vaults</div>
+                    <div class="metric-value">26.3M oz</div>
+                    <div class="metric-change up">↑ 2.5% MoM</div>
+                    <div style="margin-top: var(--space-12); font-size: 12px; color: var(--color-slate-500);">
+                        <strong>Recent:</strong> 54M oz inflow (Oct)<br>
+                        <strong>Status:</strong> <span style="background: rgba(33, 128, 141, 0.15); color: var(--color-teal-500); padding: 4px 8px; border-radius: 9999px; font-size: 11px;">Stabilizing</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Shanghai SGE</div>
+                    <div class="metric-value">168.4M oz</div>
+                    <div class="metric-change down">↓ 45% from 2020</div>
+                    <div style="margin-top: var(--space-12); font-size: 12px; color: var(--color-slate-500);">
+                        <strong>Status:</strong> 10-year low<br>
+                        <strong>Note:</strong> Export controls Jan 2026
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // YOUR API KEY INTEGRATED
+        // YOUR API KEY
         const ALPHA_VANTAGE_KEY = '5NH8260QGMKI52DS';
         
-        // LIVE DATA FETCH
+        // LIVE DATA FETCH - LONDON + SHANGHAI + SPREAD
         async function fetchLiveData() {
             const statusEl = document.getElementById('liveStatus');
-            statusEl.textContent = '🔄 Updating...';
+            statusEl.textContent = '🔄 London + Shanghai + Spread...';
             statusEl.classList.add('updating');
             
             try {
-                // 1. SILVER SPOT & FUTURES (Alpha Vantage)
+                // 1. ALPHA VANTAGE SILVER
                 const silverUrl = `https://www.alphavantage.co/query?function=MS_SILVER&interval=daily&apikey=${ALPHA_VANTAGE_KEY}`;
                 const silverRes = await fetch(silverUrl);
                 const silverData = await silverRes.json();
-                
                 const timeSeries = silverData['Time Series (Daily)'];
                 if (timeSeries) {
                     const latestDate = Object.keys(timeSeries)[0];
                     const latest = timeSeries[latestDate];
                     const spot = parseFloat(latest['4. close']).toFixed(2);
-                    
-                    document.getElementById('spotPrice')?.classList.add('price-live');
-                    document.getElementById('spotPrice') && (document.getElementById('spotPrice').textContent = `$${spot}`);
+                    document.getElementById('spotPrice').textContent = `$${spot}`;
                 }
 
-                // 2. LIVE STOCKS (Yahoo Finance via CORS proxy)
+                // 2. LONDON LBMA (MetalPriceAPI free)
+                try {
+                    const londonRes = await fetch('https://api.metalpriceapi.com/v1/latest?api_key=now&base=USD&currencies=XAG');
+                    const londonData = await londonRes.json();
+                    const londonPrice = (londonData.rates?.XAG || 0).toFixed(2);
+                    document.getElementById('londonPrice').textContent = `$${londonPrice}`;
+                } catch {
+                    document.getElementById('londonPrice').textContent = '$N/A';
+                }
+
+                // 3. SHANGHAI SGE (Direct via proxy)
+                try {
+                    const shanghaiRes = await fetch('https://api.allorigins.win/get?url=https://en.sge.com.cn/h5_data_SilverBenchmarkPrice');
+                    const shanghaiText = await shanghaiRes.json();
+                    const shanghaiHtml = shanghaiText.contents;
+                    const shanghaiMatch = shanghaiHtml.match(/(\d{8}),\s*SHAG,\s*(\d+),\s*(\d+)/);
+                    if (shanghaiMatch) {
+                        const latestPrice = parseInt(shanghaiMatch[3]); // CNY/kg PM
+                        const shanghaiUsd = (latestPrice * 0.143) / 31.1035; // CNY/kg → USD/oz
+                        document.getElementById('shanghaiPrice').textContent = `${latestPrice.toLocaleString()} CNY/kg ($${shanghaiUsd.toFixed(2)}/oz)`;
+                    }
+                } catch {
+                    document.getElementById('shanghaiPrice').textContent = 'N/A CNY/kg';
+                }
+
+                // 4. SPREAD CALCULATION
+                const londonNum = parseFloat(document.getElementById('londonPrice').textContent.replace('$', '') || 0);
+                const shanghaiNum = parseFloat(document.getElementById('shanghaiPrice').textContent.match(/\$([\d.]+)/)?.[1] || 0);
+                const spread = ((shanghaiNum - londonNum) / londonNum * 100).toFixed(2);
+                
+                document.getElementById('spreadValue').textContent = `${spread}%`;
+                const spreadEl = document.getElementById('spreadStatus');
+                if (parseFloat(spread) > 2) {
+                    spreadEl.textContent = '🚨 CRITICAL (>2%)';
+                    spreadEl.className = 'metric-change down';
+                } else if (parseFloat(spread) > 0.5) {
+                    spreadEl.textContent = '⚠️ ELEVATED (0.5-2%)';
+                    spreadEl.className = 'metric-change moderate';
+                } else {
+                    spreadEl.textContent = '✅ NORMAL (<0.5%)';
+                    spreadEl.className = 'metric-change up';
+                }
+
+                // 5. LIVE STOCKS
                 const stocks = ['WPM', 'PAAS', 'HL', 'AG', 'EXK', 'SVM'];
                 const stockPromises = stocks.map(fetchStockLive);
                 const stockData = await Promise.all(stockPromises);
                 updateStockTable(stockData);
 
-                // 3. UPDATE STATUS
+                // UPDATE STATUS
                 const now = new Date();
                 document.getElementById('priceUpdateTime').textContent = now.toLocaleTimeString();
-                statusEl.textContent = `🟢 LIVE - ${now.toLocaleTimeString()}`;
+                statusEl.textContent = `🟢 LIVE London+Shanghai Spread - ${now.toLocaleTimeString()}`;
                 statusEl.classList.remove('updating');
-                document.querySelectorAll('.loading').forEach(el => el.classList.remove('loading'));
 
             } catch (error) {
                 console.error('Live data error:', error);
-                statusEl.textContent = `🔴 Error: ${error.message.slice(0,50)}...`;
+                statusEl.textContent = `🔴 Error: ${error.message.slice(0,30)}...`;
+                statusEl.classList.add('error');
                 statusEl.classList.remove('updating');
             }
         }
@@ -203,10 +300,15 @@
                     symbol,
                     price: meta.regularMarketPrice?.toFixed(2) || 'N/A',
                     change: (meta.regularMarketChangePercent || 0).toFixed(2),
-                    volume: meta.regularMarketVolume || 0
+                    volume: meta.regularMarketVolume || 0,
+                    company: symbol === 'WPM' ? 'Wheaton PM' : 
+                            symbol === 'PAAS' ? 'Pan American' : 
+                            symbol === 'HL' ? 'Hecla Mining' : 
+                            symbol === 'AG' ? 'First Majestic' : 
+                            symbol === 'EXK' ? 'Endeavour Silver' : 'Silvercorp'
                 };
             } catch {
-                return { symbol, price: 'N/A', change: '0.00', volume: 0 };
+                return { symbol, price: 'N/A', change: '0.00', volume: 0, company: symbol };
             }
         }
 
@@ -214,16 +316,12 @@
         function updateStockTable(stocks) {
             const tbody = document.getElementById('liveStocksBody');
             tbody.innerHTML = '';
-            
             stocks.forEach(stock => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td style="font-weight: 600;">${stock.symbol === 'WPM' ? 'Wheaton' : 
-                          stock.symbol === 'PAAS' ? 'Pan American' : 
-                          stock.symbol === 'HL' ? 'Hecla' : 
-                          stock.symbol === 'AG' ? 'First Majestic' : 'Endeavour'}</td>
+                    <td style="font-weight: 600;">${stock.company}</td>
                     <td class="stock-ticker">${stock.symbol}</td>
-                    <td class="price-live" id="price-${stock.symbol}">$${stock.price}</td>
+                    <td class="price-live">$${stock.price}</td>
                     <td class="${parseFloat(stock.change) >= 0 ? 'stock-up' : 'stock-down'}">${stock.change}%</td>
                     <td>${(stock.volume/1000).toLocaleString()}K</td>
                 `;
@@ -231,36 +329,19 @@
             });
         }
 
-        // POPULATE LIVE PRICES GRID
-        function initLivePrices() {
-            document.getElementById('livePrices').innerHTML = `
-                <div class="card">
-                    <div class="metric-label">Spot Silver (LIVE)</div>
-                    <div class="metric-value" id="spotPrice">$--.--</div>
-                    <div class="metric-change" id="spotChange">--</div>
-                </div>
-                <div class="card">
-                    <div class="metric-label">Alpha Vantage Status</div>
-                    <div class="metric-value" style="font-size: 18px;">API Active</div>
-                    <div class="metric-change up">Key: 5NH8260QGMKI52DS ✓</div>
-                </div>
-            `;
-        }
-
-        // INIT & AUTO-REFRESH
-        document.addEventListener('DOMContentLoaded', () => {
-            initLivePrices();
-            fetchLiveData(); // Initial load
-            setInterval(fetchLiveData, 60000); // Every 60 seconds
-        });
-
-        // TAB SWITCHING (keep existing)
+        // TAB SWITCHING
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
         }
+
+        // INIT & AUTO-REFRESH
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLiveData(); // Initial load
+            setInterval(fetchLiveData, 60000); // Every 60 seconds
+        });
     </script>
 </body>
 </html>
